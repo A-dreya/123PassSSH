@@ -2,7 +2,15 @@
 
 from socket import *
 from threading import Thread
-
+from os import system, name 
+from time import sleep 
+  
+#clears the command prompt every other turn
+def clear():
+	if name == 'nt':
+		_ = system('cls')
+	else:
+		_ = system('clear') 
 
 def receive():
     while True:
@@ -17,10 +25,11 @@ def receive():
 
 def send():
     while True:
-        msg = input()
-        client_socket.send(bytes(msg, "utf8"))
-        if msg == "{quit}":
-            break
+    	msg = input()
+    	#clear()
+    	client_socket.send(bytes(msg, "utf8"))
+    	if msg == "{quit}":
+    		break
 
 
 HOST = input('Enter host: ')

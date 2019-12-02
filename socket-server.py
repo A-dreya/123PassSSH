@@ -4,10 +4,12 @@ from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
 from random import choice
 
-def randomize_deck(client_cnt, hands):
-    print("randomize_deck")
+def randomize_deck(client_cnt, hands):  #generates player hands
+    print("randomize_deck") #detection
+    
     deck = []
 
+    #generates cards to be used
     for i in range(1,len(clients)+1):
         if i == 1:
             deck.append("DA")
@@ -34,8 +36,8 @@ def randomize_deck(client_cnt, hands):
             deck.append("H"+str(i))
             deck.append("S"+str(i))
             deck.append("C"+str(i))
-    # i = 0
-    # j = 0
+    
+    #groups chosen cards into fours
     for i in range(client_cnt):
         hand = []
         for j in range(4):
@@ -46,6 +48,14 @@ def randomize_deck(client_cnt, hands):
         hand.clear()
     print(str(hands))
 
+
+def mainMenu(client): #main menu format
+	client.send(bytes("\n======================================================\n ooo   oooo   oooo    oooooo   ooooo    ooooo  ooooo\no oo  o  oo      oo   oo    o oo    o  ooo    ooo\n  oo    oo    ooo     oooooo  ooooooo   oooo   oooo\n  oo   oo        oo   oo      oo    o     ooo    ooo\nooooo oooooo  oooo    oo      oo    o  ooooo  ooooo\n======================================================\n[{start}] Enter\n[{help}] Instructions\n[{quit}] Exit", "utf8"))
+
+def instructions(client): #main menu format
+    client.send(bytes("\n======================================================\n\nThis 1 2 3 pass cmd game simulates the real life card game.\n\nTo enter the game, you must input \"{start}.\" The game will\nstart once there are at least 3 players, and all players in\nthe lobby has all input \"{start}\"\n\nAfter the cards are distributed, the cards will immediately\nstart, counting down form 1 to 3. In that time span, you must\nalready input the card you wish to pass. If you fail to do so,\nthen the game will just randomly choose which card to pass from\nyour deck.\n\nThis game will continue until someone completes a rank. If you\nthink you have completed a rank, type the command \" {down} .\"\nIf it turns out you do have a complete rank, then you are\nthe Winner, and the game ends.\n\n======================================================\n[{start}] Enter Game\n[{quit}] Exit", "utf8"))
+
+
 def accept_incoming_connections():
     print("accept_incoming_connections")
     """Sets up handling for incoming clients."""
@@ -53,7 +63,7 @@ def accept_incoming_connections():
         client, client_address = SERVER.accept()
         print(clients)
         print("%s:%s has connected." % client_address)
-        client.send(bytes("Greetings from the cave! Now type your name and press enter!", "utf8"))
+        client.send(bytes("Enter Player name: \t", "utf8"))
         addresses[client] = client_address
         client_cards[client] = []
         Thread(target=handle_client, args=(client,)).start()
@@ -76,7 +86,7 @@ def card_distrib():
                 temp = str(client_cards[client][i])
                 cards = cards + ', ' + temp
         print(str(clients[client])+':'+cards)
-        client.send(bytes(cards, "utf8"))
+        client.send(bytes("\n======================================================\nHere are your cards: " + cards+"\n======================================================\n", "utf8"))
         # print(client_cards[client])
 
 def handle_client(client):  # Takes client socket as argument.
@@ -85,12 +95,13 @@ def handle_client(client):  # Takes client socket as argument.
 
     name = client.recv(BUFSIZ).decode("utf8")
     print(client)
-    welcome = 'Welcome %s! If you ever want to quit, type {quit} to exit.' % name
+    welcome = 'Welcome %s!' % name
     client.send(bytes(welcome, "utf8"))
     msg = "%s has joined the game!" % name
     broadcast(bytes(msg, "utf8"))
     clients[client] = name
     ready = 0;
+    mainMenu(client)
 
     while True:
         msg = client.recv(BUFSIZ)
@@ -99,7 +110,7 @@ def handle_client(client):  # Takes client socket as argument.
             for p in players:
                 print("p:" + p)
                 if name == p:
-                    client.send(bytes("You already confirmed. Waiting for other players", "utf8"))
+                    client.send(bytes("\n======================================================\nYou already confirmed. Waiting for other players\n======================================================\n", "utf8"))
                     ready = 1
                     break
                 else:
@@ -108,14 +119,17 @@ def handle_client(client):  # Takes client socket as argument.
                 players.append(name)
             print(players)
             if len(players) >= 3 and len(players) == len(clients):
-                start_game()
+                start_game(client)
 
             elif len(players) < 3:
-                broadcast(bytes("There must be at least 3 players to start game. Currently there are " + str(len(players)), "utf8"))
+                broadcast(bytes("\n======================================================\n" + name + " has confirmed. There must be at least 3 players to start game. Currently there are " + str(len(players)), "utf8"))
             else:
-                broadcast(bytes("Waiting for other players to confirm. "+ str(len(players)) +"/" + str(len(clients)) + " are confirmed", "utf8"))
+                broadcast(bytes("\n======================================================\n" + name + " has confirmed. Waiting for other players to confirm. "+ str(len(players)) +"/" + str(len(clients)) + " are confirmed", "utf8"))
+        elif msg == bytes("{help}", "utf8"):
+            instructions(client)
+            continue
         elif msg != bytes("{quit}", "utf8"):
-            broadcast(msg, name+": ")
+            continue
         else:
             client.send(bytes("{quit}", "utf8"))
             client.close()
@@ -123,10 +137,11 @@ def handle_client(client):  # Takes client socket as argument.
             broadcast(bytes("%s has left the chat." % name, "utf8"))
             break
 
-def start_game():
+def start_game(client):
     print("start_game")
-    broadcast(bytes("The game has started", "utf8"))
+    broadcast(bytes("\n======================================================\nThe game has started. Cards are being distributed\n======================================================\n", "utf8"))
     card_distrib()
+    client.send(bytes("Pass in Three seconds", "utf8"))
 
 def broadcast(msg, prefix=""):  # prefix is for name identification.
     """Broadcasts a message to all the clients."""
